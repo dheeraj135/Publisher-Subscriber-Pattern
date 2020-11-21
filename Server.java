@@ -17,8 +17,13 @@ public class Server implements Remote{
     private void startNewSlave() {
 
     }
-    private void sendToSlave() {
-
+    private void subscribeToSlave(String topic, String UUID, String ReqID) {
+        // Get slave instance from RMI
+        // slave.__registerSubscriber()
+    }
+    private void unsubscribeToSlave(String topic, String UUID, String ReqID) {
+        // Get slave instance from RMI
+        // slave.__registerSubscriber()
     }
     public void lockMaster() {
         //lock.lock();
@@ -32,8 +37,25 @@ public class Server implements Remote{
     private void sendToSubscribers(String topic, Data dt, String ReqID) {
         // Send data to all subscribers of topic
     }
-    private void registerSubscriber(String topic, String UUID, String ReqID) {
+    public void __registerSubscriber(String topic, String UUID, String ReqID) {
+        // Update the hashmap
+    }
+    public void registerSubscriber(String topic, String UUID, String ReqID) {
         // Acquire lock on topicSubsriberList
         // Send this data to slave
+        __registerSubscriber(topic,UUID,ReqID);
+        // Release lock
+    }
+    public void __unregisterSubscriber(String topic, String UUID, String ReqID) {
+        // Update the hashmap
+    }
+    public void unregisterSubscriber(String topic, String UUID, String ReqID) {
+        // Acquire lock on topicSubsriberList
+        // Send this data to slave
+        __unregisterSubscriber(topic,UUID,ReqID);
+        // Release lock
+    }
+    public void recievePublication(String topic, String Data, String ReqID) {
+        // Call sendToSubscribers.
     }
 }
