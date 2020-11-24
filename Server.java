@@ -15,6 +15,10 @@ public class Server implements ServerInterface{
     HashMap<String, List<String> > topicSubscriberList;
     ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
 
+    public Server() {
+        topicSubscriberList = new HashMap<>();
+    }
+
     public boolean amIUp() {
         return true;
     }
@@ -80,9 +84,9 @@ public class Server implements ServerInterface{
             // Get the registry 
             Registry registry = LocateRegistry.getRegistry(); 
             // Look up the registry for the remote object 
-            Server stub = (Server) registry.lookup("slave");
+            ServerInterface stub = (ServerInterface) registry.lookup("slave");
             // Pass a message to the remote object
-            stub.registerSubscriber(topic, UUID, ReqID);
+            stub.__registerSubscriber(topic, UUID, ReqID);
         } catch (Exception e) {
             System.err.println("Client exception: " + e.toString()); 
             e.printStackTrace(); 
@@ -94,7 +98,7 @@ public class Server implements ServerInterface{
             // Get the registry 
             Registry registry = LocateRegistry.getRegistry(); 
             // Look up the registry for the remote object 
-            Server stub = (Server) registry.lookup("slave");
+            ServerInterface stub = (ServerInterface) registry.lookup("slave");
             // Pass a message to the remote object
             stub.unregisterSubscriber(topic, UUID, ReqID);
         } catch (Exception e) {
@@ -132,6 +136,7 @@ public class Server implements ServerInterface{
             topicSubscriberList.put(topic, new ArrayList<String>());
         }
         topicSubscriberList.get(topic).add(UUID);
+        System.out.println("Topic: "+topic +" UUID: "+UUID+" ReqID: "+ReqID);
     }
     public void registerSubscriber(String topic, String UUID, String ReqID) {
         // Acquire lock on topicSubsriberList
@@ -166,6 +171,7 @@ public class Server implements ServerInterface{
             unsubscribeToSlave(topic, UUID, ReqID);
         }
     }
+    
     public static void main(String[] args) throws InterruptedException, RemoteException {
         Server sobj = new Server();
         ServerInterface rmobj = (ServerInterface) UnicastRemoteObject.exportObject(sobj, 0);
