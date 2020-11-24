@@ -1,12 +1,12 @@
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Set;
 
 public interface ServerInterface extends Remote {
     public boolean amIUp() throws RemoteException;
     public void lockMaster() throws RemoteException;
-    public HashMap<String,List<String> > syncWithSlave() throws RemoteException;
+    public HashMap<String,Set<String> > syncWithSlave() throws RemoteException;
     public void unlockMaster() throws RemoteException;
     public void sendToSubscribers(String topic, Data dt, String ReqID) throws RemoteException;
     public void __registerSubscriber(String topic, String UUID, String ReqID) throws RemoteException;

@@ -1,16 +1,22 @@
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Scanner;
+import java.util.concurrent.locks.ReentrantLock;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.lang.management.ManagementFactory;
 
 public class Subscriber implements SubscriberInterface {
     String UUID = "";
     String logFile = "";
+    Integer reqCounter = 0;
+    ReentrantLock counterLock = new ReentrantLock(true);
     Registry registry;
 
-    private void unsubsribe(String topic, String ReqID) {
+    private void unsubscribe(String topic, String ReqID) {
         // call server.unregisterSubscriber()
         try {
             ServerInterface server = (ServerInterface) registry.lookup("master");
@@ -40,9 +46,38 @@ public class Subscriber implements SubscriberInterface {
 
     }
 
+    private void executeCommand(String line) {
+        String[] splitStrings = line.split(" ");
+        if(splitStrings.length != 2)
+            return;
+        String reqId = UUID;
+        counterLock.lock();
+        reqId += reqCounter;
+        reqCounter++;
+        counterLock.unlock();
+        if(splitStrings[0].compareTo("S") == 0)
+            subscribe(splitStrings[1], reqId);
+        else if(splitStrings[0].compareTo("U") == 0)
+            unsubscribe(splitStrings[1], reqId);
+        else {
+            System.err.println("ERROR: Invalid Command line: "+line);
+        }
+    }
+
     public void executeCommandsFromFile(String filename) {
-        subscribe("test1","0");
-        subscribe("test2","1");
+        File testfile = new File(filename);
+        Scanner reader;
+        try {
+            reader = new Scanner(testfile);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return;
+        }
+        while (reader.hasNextLine()) {
+            String line = reader.nextLine();
+            executeCommand(line);
+        }
+        reader.close();
     }
 
     public Subscriber() {

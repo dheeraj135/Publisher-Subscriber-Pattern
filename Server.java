@@ -1,7 +1,9 @@
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.rmi.registry.LocateRegistry;
 import java.io.IOException;
@@ -12,7 +14,7 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 
 public class Server implements ServerInterface{
-    HashMap<String, List<String> > topicSubscriberList;
+    HashMap<String, Set<String> > topicSubscriberList;
     ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
 
     public Server() {
@@ -118,7 +120,7 @@ public class Server implements ServerInterface{
     public void lockMaster() {
         reentrantReadWriteLock.writeLock().lock();
     }
-    public HashMap<String,List<String> > syncWithSlave() {
+    public HashMap<String,Set<String> > syncWithSlave() {
         return topicSubscriberList;
     }
     public void unlockMaster() {
@@ -127,7 +129,7 @@ public class Server implements ServerInterface{
 
     public void sendToSubscribers(String topic, Data dt, String ReqID) {
         // Send data to all subscribers of topic
-        List <String> topicSubscribers = topicSubscriberList.get(topic);
+        Set <String> topicSubscribers = topicSubscriberList.get(topic);
         for (String sub: topicSubscribers) {
             try {  
                 Registry registry = LocateRegistry.getRegistry(); 
@@ -142,7 +144,7 @@ public class Server implements ServerInterface{
     public void __registerSubscriber(String topic, String UUID, String ReqID) {
         // Update the hashmap
         if (!topicSubscriberList.containsKey(topic)) {
-            topicSubscriberList.put(topic, new ArrayList<String>());
+            topicSubscriberList.put(topic, new HashSet<String>());
         }
         topicSubscriberList.get(topic).add(UUID);
         System.out.println("Topic: "+topic +" UUID: "+UUID+" ReqID: "+ReqID);
