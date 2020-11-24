@@ -111,7 +111,7 @@ public class Server implements ServerInterface{
             // Look up the registry for the remote object 
             ServerInterface stub = (ServerInterface) registry.lookup("slave");
             // Pass a message to the remote object
-            stub.unregisterSubscriber(topic, UUID, ReqID);
+            stub.__unregisterSubscriber(topic, UUID, ReqID);
         } catch (Exception e) {
             System.err.println("Client exception: " + e.toString()); 
             e.printStackTrace(); 
@@ -170,6 +170,8 @@ public class Server implements ServerInterface{
                 topicSubscriberList.remove(topic);
             }
         }
+        System.out.println("Topic: "+topic +" UUID: "+UUID+" ReqID: "+ReqID);
+        printTopicList();
     }
     public void unregisterSubscriber(String topic, String UUID, String ReqID) {
         // Acquire lock on topicSubsriberList
