@@ -5,24 +5,29 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.rmi.registry.LocateRegistry;
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
 import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
-public class Server implements Remote{
+public class Server implements ServerInterface{
     HashMap<String, List<String> > topicSubscriberList;
     ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
 
-    private boolean isMasterUp() {
+    public boolean amIUp() {
+        return true;
+    }
+
+    public boolean isMasterUp() {
         // Get slave instance from RMI
         try {  
             // Get the registry 
             Registry registry = LocateRegistry.getRegistry(); 
             // Look up the registry for the remote object 
             try {
-                Server stub = (Server) registry.lookup("master");
-                return true;
+                ServerInterface stub = (ServerInterface) registry.lookup("master");
+                return stub.amIUp();
             } catch(NotBoundException e) {
                 return false;
             }
@@ -32,13 +37,26 @@ public class Server implements Remote{
         }
         return false;
     }
-    private void becomeMaster() {
+    public void becomeMaster() {
+
         try { 
-            // Export the remote object to the stub 
-            Server stub = (Server) UnicastRemoteObject.exportObject(this, 0);  
+            // Export the remote object to the stub
+            // ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(this, 0);  
+            // Bind the remote object (stub) in the registry 
+            Registry registry = LocateRegistry.getRegistry();
+            registry.rebind("master", this);
+        } catch (Exception e) { 
+            System.err.println("Server exception: " + e.toString()); 
+            e.printStackTrace(); 
+        }
+    }
+    public void becomeSlave() {
+        try { 
+            // Export the remote object to the stub
+            // ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(this, 0);
             // Bind the remote object (stub) in the registry 
             Registry registry = LocateRegistry.getRegistry(); 
-            registry.bind("master", stub);  
+            registry.rebind("slave", this);
         } catch (Exception e) { 
             System.err.println("Server exception: " + e.toString()); 
             e.printStackTrace(); 
@@ -48,6 +66,9 @@ public class Server implements Remote{
         String[] args = new String[] { "java", "Server"};
         ProcessBuilder pb = new ProcessBuilder(args);
         try {
+            pb.redirectOutput(Redirect.INHERIT);
+            pb.redirectError(Redirect.INHERIT);
+            pb.redirectInput(Redirect.INHERIT);     // CTRL + C brings everything down and we don't have to kill all processes manually.
             pb.start();
         } catch (IOException e) {
             System.out.println(e);
@@ -90,7 +111,8 @@ public class Server implements Remote{
     public void unlockMaster() {
         reentrantReadWriteLock.writeLock().unlock();
     }
-    private void sendToSubscribers(String topic, Data dt, String ReqID) {
+
+    public void sendToSubscribers(String topic, Data dt, String ReqID) {
         // Send data to all subscribers of topic
         List <String> topicSubscribers = topicSubscriberList.get(topic);
         for (String sub: topicSubscribers) {
@@ -143,5 +165,21 @@ public class Server implements Remote{
             reentrantReadWriteLock.writeLock().unlock();
             unsubscribeToSlave(topic, UUID, ReqID);
         }
+    }
+    public static void main(String[] args) throws InterruptedException, RemoteException {
+        Server sobj = new Server();
+        ServerInterface rmobj = (ServerInterface) UnicastRemoteObject.exportObject(sobj, 0);
+        rmobj.becomeSlave();
+        System.out.println("I am Slave Now!");
+        System.out.println("Waiting for master to go down.");
+        while(rmobj.isMasterUp()) {
+            // System.out.println("Going to sleep!");
+            Thread.sleep(500);
+        }
+        System.out.println("Becoming Master");
+        rmobj.becomeMaster();
+        System.out.println("I am master now. Starting new slave.");
+        sobj.startNewSlave();
+        System.out.println("Dying!");
     }
 }
