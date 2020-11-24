@@ -1,5 +1,11 @@
-public class Data{
-    String sdt="";
+import java.io.Serializable;
+
+public class Data implements Serializable {
+    /**
+     *
+     */
+    private static final long serialVersionUID = 3775019157965266452L;
+    String sdt = "";
     Integer idt=0;
     boolean isInt=false;
     public String getData() {

@@ -130,10 +130,12 @@ public class Server implements ServerInterface{
     public void sendToSubscribers(String topic, Data dt, String ReqID) {
         // Send data to all subscribers of topic
         Set <String> topicSubscribers = topicSubscriberList.get(topic);
+        if(topicSubscribers == null)
+            return;
         for (String sub: topicSubscribers) {
             try {  
                 Registry registry = LocateRegistry.getRegistry(); 
-                Subscriber stub = (Subscriber) registry.lookup(sub);
+                SubscriberInterface stub = (SubscriberInterface) registry.lookup(sub);
                 stub.receiveData(topic, dt, ReqID);
             } catch (Exception e) {
                 System.err.println("Client exception: " + e.toString()); 

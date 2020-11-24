@@ -40,6 +40,7 @@ public class Subscriber implements SubscriberInterface {
 
     public void receiveData(String topic, Data dt, String ReqID) {
         // receive data from server. This is called by server
+        System.out.println("Received @"+topic+" Data: "+dt.getData()+" with reqID: "+ReqID);
     }
 
     private void outputToLog(String log) {
