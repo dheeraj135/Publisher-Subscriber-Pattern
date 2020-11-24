@@ -16,4 +16,5 @@ public interface ServerInterface extends Remote {
     public void becomeSlave() throws RemoteException;
     public boolean isMasterUp() throws RemoteException;
     public void becomeMaster() throws RemoteException;
+    public void printTopicList() throws RemoteException;
 }

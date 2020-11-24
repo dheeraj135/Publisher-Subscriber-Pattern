@@ -55,11 +55,20 @@ public class Server implements ServerInterface{
         }
     }
     public void becomeSlave() {
+        Registry registry;
+        try{
+            registry = LocateRegistry.getRegistry(); 
+            ServerInterface server = (ServerInterface) registry.lookup("master");
+            topicSubscriberList = server.syncWithSlave();
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
         try { 
             // Export the remote object to the stub
             // ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(this, 0);
-            // Bind the remote object (stub) in the registry 
-            Registry registry = LocateRegistry.getRegistry(); 
+            // Bind the remote object (stub) in the registry
+            registry = LocateRegistry.getRegistry(); 
             registry.rebind("slave", this);
         } catch (Exception e) { 
             System.err.println("Server exception: " + e.toString()); 
@@ -137,6 +146,7 @@ public class Server implements ServerInterface{
         }
         topicSubscriberList.get(topic).add(UUID);
         System.out.println("Topic: "+topic +" UUID: "+UUID+" ReqID: "+ReqID);
+        printTopicList();
     }
     public void registerSubscriber(String topic, String UUID, String ReqID) {
         // Acquire lock on topicSubsriberList
@@ -171,11 +181,18 @@ public class Server implements ServerInterface{
             unsubscribeToSlave(topic, UUID, ReqID);
         }
     }
+    public void printTopicList() {
+        for (String ls: topicSubscriberList.keySet()) {
+            System.out.println(ls+" "+topicSubscriberList.get(ls));
+        }
+    }
     
     public static void main(String[] args) throws InterruptedException, RemoteException {
         Server sobj = new Server();
         ServerInterface rmobj = (ServerInterface) UnicastRemoteObject.exportObject(sobj, 0);
         rmobj.becomeSlave();
+        System.out.println("Slave Server: ");
+        rmobj.printTopicList();
         System.out.println("I am Slave Now!");
         System.out.println("Waiting for master to go down.");
         while(rmobj.isMasterUp()) {
