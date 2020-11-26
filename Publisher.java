@@ -76,6 +76,17 @@ public class Publisher {
         reader.close();
     }
 
+    static void takeInputFromCommandLine() {
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            String cmd = scanner.nextLine();
+            if (cmd == "exit") {
+                scanner.close();
+            }
+            executeCommand(cmd);
+        }
+    }
+
     public static String getUUID() {
         return UUID;
     }
@@ -87,6 +98,10 @@ public class Publisher {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        executeCommandsFromFile(args[0]);
+        if (args.length == 1) {
+            executeCommandsFromFile(args[0]);
+        } else {
+            takeInputFromCommandLine();
+        }
     }
 }

@@ -7,6 +7,8 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 
 public class Subscriber implements SubscriberInterface {
@@ -41,10 +43,18 @@ public class Subscriber implements SubscriberInterface {
     public void receiveData(String topic, Data dt, String ReqID) {
         // receive data from server. This is called by server
         System.out.println("Received @"+topic+" Data: "+dt.getData()+" with reqID: "+ReqID);
+        outputToLog(ReqID + "," + topic + "," + dt.getData());
     }
 
     private void outputToLog(String log) {
-
+        // try {
+        //     FileWriter myWriter = new FileWriter(logFile);
+        //     myWriter.write(log);
+        //     myWriter.close();
+        // } catch (IOException e) {
+        //     System.out.println("An error occurred.");
+        //     e.printStackTrace();
+        // }
     }
 
     private void executeCommand(String line) {
@@ -66,6 +76,7 @@ public class Subscriber implements SubscriberInterface {
     }
 
     public void executeCommandsFromFile(String filename) {
+        logFile = "serverlog"+filename;
         File testfile = new File(filename);
         Scanner reader;
         try {
@@ -79,6 +90,17 @@ public class Subscriber implements SubscriberInterface {
             executeCommand(line);
         }
         reader.close();
+    }
+
+    public void takeInputFromCommandLine() {
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            String cmd = scanner.nextLine();
+            if (cmd == "exit") {
+                scanner.close();
+            }
+            executeCommand(cmd);
+        }
     }
 
     public Subscriber() {
@@ -112,6 +134,11 @@ public class Subscriber implements SubscriberInterface {
         // Create object, bind to UUID and call executeCommandsFromFile();
         SubscriberInterface robj = (SubscriberInterface) UnicastRemoteObject.exportObject(obj,0);
         robj.register();
-        robj.executeCommandsFromFile(args[0]);
+        if (args.length == 1){
+            robj.executeCommandsFromFile(args[0]);
+        } else {
+            robj.takeInputFromCommandLine();
+        }
+        
     }
 }
