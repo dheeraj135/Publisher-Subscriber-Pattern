@@ -43,7 +43,7 @@ public class Server implements ServerInterface{
         }
         return false;
     }
-    public void becomeMaster() {
+    public int becomeMaster() {
 
         try { 
             // Export the remote object to the stub
@@ -51,10 +51,12 @@ public class Server implements ServerInterface{
             // Bind the remote object (stub) in the registry 
             Registry registry = LocateRegistry.getRegistry();
             registry.rebind("master", this);
+            return 0;
         } catch (Exception e) { 
             System.err.println("Server exception: " + e.toString()); 
             e.printStackTrace(); 
         }
+        return -1;
     }
     public void becomeSlave() {
         Registry registry;
@@ -206,7 +208,11 @@ public class Server implements ServerInterface{
             Thread.sleep(500);
         }
         System.out.println("Becoming Master");
-        rmobj.becomeMaster();
+        if(rmobj.becomeMaster() != 0 ) {
+            System.out.println("Unable to become master. I will not start a slave.");
+            System.out.println("Dying!");
+            return;
+        }
         System.out.println("I am master now. Starting new slave.");
         sobj.startNewSlave();
         System.out.println("Dying!");

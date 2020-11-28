@@ -15,6 +15,6 @@ public interface ServerInterface extends Remote {
     public void unregisterSubscriber(String topic, String UUID, String ReqID) throws RemoteException;
     public void becomeSlave() throws RemoteException;
     public boolean isMasterUp() throws RemoteException;
-    public void becomeMaster() throws RemoteException;
+    public int becomeMaster() throws RemoteException;
     public void printTopicList() throws RemoteException;
 }
