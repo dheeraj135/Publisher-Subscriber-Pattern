@@ -6,8 +6,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.rmi.registry.LocateRegistry;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -128,10 +134,18 @@ public class Server implements ServerInterface{
     public void unlockMaster() {
         reentrantReadWriteLock.writeLock().unlock();
     }
-
+    
     public void sendToSubscribers(String topic, Data dt, String ReqID) {
-        // Send data to all subscribers of topic
+        // Acquire lock on topicSubsriberList
+        reentrantReadWriteLock.readLock().lock();
         Set <String> topicSubscribers = topicSubscriberList.get(topic);
+        reentrantReadWriteLock.readLock().unlock();
+        
+        try {
+            outputToLog("P " + topic + " " + dt.getData());
+        } catch(IOException e){
+            e.printStackTrace();
+        }
         if(topicSubscribers == null)
             return;
         for (String sub: topicSubscribers) {
@@ -145,6 +159,25 @@ public class Server implements ServerInterface{
             }
         }
     }
+
+    public void outputToLog(String str) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new FileWriter("./logs/server.txt",true));
+        writer.write(str+ "\n");
+        writer.flush();
+        writer.close();
+    }
+
+    public void createLogFile(){
+        Path path = Paths.get("./logs/server.txt"); 
+        try { 
+            Files.deleteIfExists(path); 
+        } 
+        catch (IOException e) { 
+            e.printStackTrace(); 
+        } 
+        File newFile = new File("./logs/server.txt");
+    }
+         
     public void __registerSubscriber(String topic, String UUID, String ReqID) {
         // Update the hashmap
         if (!topicSubscriberList.containsKey(topic)) {
@@ -160,6 +193,11 @@ public class Server implements ServerInterface{
         try {
             // Send this data to slave
             __registerSubscriber(topic, UUID, ReqID);
+            try {
+                outputToLog("S " + UUID + " " + topic);
+            } catch(IOException e){
+                e.printStackTrace();
+            }
         } finally {
             // Release lock
             reentrantReadWriteLock.writeLock().unlock();
@@ -183,6 +221,11 @@ public class Server implements ServerInterface{
         try {
             // Send this data to slave
             __unregisterSubscriber(topic, UUID, ReqID);
+            try {
+                outputToLog("U " + UUID + " " + topic);
+            } catch(IOException e){
+                e.printStackTrace();
+            }
         } finally {
             // Release lock
             reentrantReadWriteLock.writeLock().unlock();
@@ -198,6 +241,7 @@ public class Server implements ServerInterface{
     public static void main(String[] args) throws InterruptedException, RemoteException {
         Server sobj = new Server();
         ServerInterface rmobj = (ServerInterface) UnicastRemoteObject.exportObject(sobj, 0);
+        sobj.createLogFile();
         rmobj.becomeSlave();
         System.out.println("Slave Server: ");
         rmobj.printTopicList();

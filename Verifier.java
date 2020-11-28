@@ -1,4 +1,6 @@
 import java.io.BufferedWriter;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -28,7 +30,7 @@ public class Verifier {
 
     public static void populateFile(FileWriter myWriter, int num_topics, int num_subs) throws IOException {
         Random rand = new Random();
-        int lines = 1000;
+        int lines = 200;
         while (lines != 0) {
             int cur = rand.nextInt(3);
             if (cur == 0) {
@@ -42,7 +44,7 @@ public class Verifier {
         }
     }
 
-    public static void runTest(int test_num, int num_subs) throws InterruptedException, IOException {
+    public static void runTests(int num_subs) throws InterruptedException, IOException {
         Process publisher, server;
         String[] args = new String[] { "java", "Server" };
         ProcessBuilder pb = new ProcessBuilder(args);
@@ -61,8 +63,8 @@ public class Verifier {
 
         Process[] subs = new Process[num_subs];
         for (int i = 0; i < num_subs; i++) {
-            String filename = Integer.toString(test_num)+"_"+Integer.toString(i);
-            String[] args1 = new String[] { "java", "Subscriber", "test_mode", filename};
+            String filename = Integer.toString(i);
+            String[] args1 = new String[] { "java", "Subscriber", ""+i, filename};
             ProcessBuilder pb1 = new ProcessBuilder(args1);
             pb1.redirectOutput(Redirect.INHERIT);
             try {
@@ -80,7 +82,7 @@ public class Verifier {
             writers[i] = subs[i].getOutputStream();
         }
 
-        File testfile = new File("./tests/inputs/" + test_num + ".txt");
+        File testfile = new File("./tests/input.txt");
         Scanner reader;
         try {
             reader = new Scanner(testfile);
@@ -89,16 +91,8 @@ public class Verifier {
             return;
         }
 
-        File[] testsubfile = new File[num_subs];
-        FileWriter[] testsubfilewriter = new FileWriter[num_subs];
-        for (int i = 0; i < num_subs; i++) {
-            testsubfile[i] = new File("./tests/expected_output/" + test_num + "_" + i + ".txt");
-            testsubfilewriter[i] = new FileWriter(testsubfile[i].getAbsoluteFile());
-        }
-
-        Map<String, Set<Integer>> map = new HashMap<String, Set<Integer>>();
         while (reader.hasNextLine()) {
-            Thread.sleep(100);
+            Thread.sleep(500);
             String line = reader.nextLine();
             String[] splitStrings = line.split(" ");
             if (splitStrings.length != 3)
@@ -107,82 +101,138 @@ public class Verifier {
                 String sub_num = splitStrings[2];
                 writers[Integer.parseInt(sub_num)].write((splitStrings[0] + " " + splitStrings[1]+"\n").getBytes());
                 writers[Integer.parseInt(sub_num)].flush();
-                if (splitStrings[0].compareTo("S") == 0) {
-                    String key = splitStrings[1];
-                    Set<Integer> set = map.get(key);
-                    if (set == null){ 
-                        set = new HashSet<Integer>();
-                        map.put(key, set);
-                    }
-                    set.add(Integer.parseInt(splitStrings[2]));
-                } else if (splitStrings[0].compareTo("U") == 0) {
-                    String key = splitStrings[1];
-                    Set<Integer> set = map.get(key);
-                    if (set != null){
-                        set.remove(Integer.parseInt(splitStrings[2]));
-                    }
-                }
             } else if (splitStrings[0].compareTo("T") == 0) {
                 publisherwriter.write((splitStrings[1] + " " + splitStrings[2]+"\n").getBytes());
                 publisherwriter.flush();
-                String key = splitStrings[1];
-                Set<Integer> set = map.get(key);
-                if (set != null){
-                    for (int sub: set) {
-                        testsubfilewriter[sub].write(splitStrings[2] + "\n");
-                    }
-                }
             } else {
                 System.err.println("ERROR: Invalid Command line: " + line);
             }
         }
         Thread.sleep(5000);
         reader.close();
-        for (int i = 0; i < num_subs; i++) {
-            subs[i].destroy();
-            testsubfilewriter[i].close();
-        }
-        //Runtime.getRuntime().exec("kill -SIGNINT " + server.pid());
         publisher.destroy();
-        server.destroyForcibly();
+        server.destroy();
+    }
+
+    private static void checkTestCasesOutput(int num_subs) {
+        boolean allTestsPassed = true;
+        for (int i=0;i<num_subs;i++) {
+            try {
+                File f1 = new File("./logs/"+Integer.toString(i)+".txt");
+                File f2 = new File("./tests/expected_output/"+Integer.toString(i)+".txt");
+                FileReader fR1 = new FileReader(f1);
+                FileReader fR2 = new FileReader(f2);
+                BufferedReader reader1 = new BufferedReader(fR1);
+                BufferedReader reader2 = new BufferedReader(fR2);
+                String line1 = null;
+                String line2 = null;
+                int flag = 1;
+                try {
+                    while ((flag == 1) && ((line1 = reader1.readLine()) != null)
+                            && ((line2 = reader2.readLine()) != null)) {
+                        if (!line1.equals(line2))
+                            flag = 0;
+                    }
+                    reader1.close();
+                    reader2.close();
+                } catch(IOException e) {
+                    System.out.println(e);
+                }
+                if (flag==0){
+                    allTestsPassed = false;
+                }
+            } catch(FileNotFoundException e){
+                System.out.println(e);
+            }
+        }
+        if (allTestsPassed){
+            System.out.println("All test cases passed. :)");
+        } else {
+            System.out.println("Test cases did not pass. :(");
+        }
+    }
+
+    public static void verifyTests(int num_subs) throws IOException {
+        Map<String, Set<Integer>> map = new HashMap<String, Set<Integer>>();
+        File testfile = new File("./logs/server.txt");
+        Scanner reader;
+        try {
+            reader = new Scanner(testfile);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return;
+        }
+        FileWriter[] writers = new FileWriter[num_subs];
+        for (int i = 0; i < num_subs; i++) {
+            File file = new File("./tests/expected_output/"+i+".txt");
+            writers[i] = new FileWriter(file.getAbsoluteFile());
+        }
+        while (reader.hasNextLine()) {
+            String line = reader.nextLine();
+            String[] splitStrings = line.split(" ");
+            if (splitStrings.length != 3)
+                return;
+            if (splitStrings[0].compareTo("S") == 0) {
+                String key = splitStrings[2];
+                Set<Integer> set = map.get(key);
+                if (set == null){ 
+                    set = new HashSet<Integer>();
+                    map.put(key, set);
+                }
+                set.add(Integer.parseInt(splitStrings[1]));
+            } else if (splitStrings[0].compareTo("U") == 0) {
+                String key = splitStrings[2];
+                Set<Integer> set = map.get(key);
+                if (set != null){
+                    set.remove(Integer.parseInt(splitStrings[1]));
+                }
+            } else if (splitStrings[0].compareTo("P") == 0) {
+                String key = splitStrings[1];
+                Set<Integer> set = map.get(key);
+                if (set != null){
+                    for (Integer sub: set){
+                        writers[sub].write(splitStrings[2]+"\n");
+                    }
+                }
+            }
+        }
+        for (int i=0;i<num_subs;i++){
+            writers[i].close();
+        }
     }
 
     public static void main(String[] args) throws InterruptedException, IOException {
         int num_topics = 10;
-        if (args.length != 2) {
-            System.out.println("Please pass the parameters num_subs num_tests.");
+        if (args.length != 1) {
+            System.out.println("Please pass the parameters num_subs.");
             System.exit(1);
         }
         int num_subs = Integer.parseInt(args[0]);
-        int num_tests = Integer.parseInt(args[1]);
         File directory = new File("tests");
         if (!directory.exists()) {
             directory.mkdir();
         }
 
-        for (int i = 0; i < num_tests; i++) {
-            try {
-                File file = new File("./tests/inputs/" + i + ".txt");
-                FileWriter myWriter = new FileWriter(file.getAbsoluteFile());
-                populateFile(myWriter, num_topics, num_subs);
-                myWriter.close();
-            } catch (IOException e) {
-                System.out.println("An error occurred.");
-                e.printStackTrace();
-            }
+        try {
+            File file = new File("./tests/input.txt");
+            FileWriter myWriter = new FileWriter(file.getAbsoluteFile());
+            populateFile(myWriter, num_topics, num_subs);
+            myWriter.close();
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
         }
-        int i=0;
-        // for (int i = 0; i < num_tests; i++) {
-            System.out.println("Running Test " + i + "\n");
-            try {
-                runTest(i, num_subs);
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            System.out.println("Completed Test " + i + "\n");
-        // }
-
-        //After this write code to diff between logs and expected_output/
+        
+        System.out.println("Running Test Cases\n");
+        try {
+            runTests(num_subs);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        verifyTests(num_subs);
+        checkTestCasesOutput(num_subs);
+        System.out.println("Completed Test Cases\n");
+        Runtime.getRuntime().exec("killall -9 java");
     }
 }

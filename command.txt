@@ -1,3 +1,0 @@
-S topic1
-S topic2
-S topic2

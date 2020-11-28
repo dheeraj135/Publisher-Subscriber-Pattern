@@ -1,2 +1,0 @@
-topic1 Hola!
-topic2 How_you_doing?

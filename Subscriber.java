@@ -121,8 +121,13 @@ public class Subscriber implements SubscriberInterface {
         }
     }
 
-    public Subscriber() {
-        UUID = ManagementFactory.getRuntimeMXBean().getName();
+    public Subscriber(String name) {
+        if (name == null){
+            UUID = ManagementFactory.getRuntimeMXBean().getName();
+        } else {
+            UUID = name;
+        }
+        
         try {
             registry = LocateRegistry.getRegistry();
         } catch (RemoteException e) {
@@ -148,7 +153,13 @@ public class Subscriber implements SubscriberInterface {
     }
 
     public static void main(String[] args) throws RemoteException {
-        Subscriber obj = new Subscriber();
+        Subscriber obj;
+        if (args.length == 2) {
+            obj = new Subscriber(args[0]);
+        } else {
+            obj = new Subscriber(null);
+        }
+        
         // Create object, bind to UUID and call executeCommandsFromFile();
         SubscriberInterface robj = (SubscriberInterface) UnicastRemoteObject.exportObject(obj,0);
         robj.register();
