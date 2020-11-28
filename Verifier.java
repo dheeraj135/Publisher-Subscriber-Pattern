@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -45,6 +46,7 @@ public class Verifier {
         Process publisher, server;
         String[] args = new String[] { "java", "Server" };
         ProcessBuilder pb = new ProcessBuilder(args);
+        // pb.redirectOutput(Redirect.INHERIT);
         server = pb.start();
 
         Thread.sleep(1000);
@@ -52,8 +54,8 @@ public class Verifier {
         String[] args2 = new String[] { "java", "Publisher" };
         ProcessBuilder pb2 = new ProcessBuilder(args2);
         publisher = pb2.start();
-        OutputStream stdin = publisher.getOutputStream();
-        BufferedWriter publisherwriter = new BufferedWriter(new OutputStreamWriter(stdin));
+        // OutputStream stdin = publisher.getOutputStream();
+        OutputStream publisherwriter = publisher.getOutputStream();
 
         Thread.sleep(1000);
 
@@ -62,6 +64,7 @@ public class Verifier {
             String filename = Integer.toString(test_num)+"_"+Integer.toString(i);
             String[] args1 = new String[] { "java", "Subscriber", "test_mode", filename};
             ProcessBuilder pb1 = new ProcessBuilder(args1);
+            pb1.redirectOutput(Redirect.INHERIT);
             try {
                 subs[i] = pb1.start();
             } catch (IOException e) {
@@ -69,11 +72,12 @@ public class Verifier {
             }
         }
         
-        Thread.sleep(1000);
+        Thread.sleep(2000);
 
-        BufferedWriter[] writers = new BufferedWriter[num_subs];
+        OutputStream[] writers = new OutputStream[num_subs];
         for (int i = 0; i < num_subs; i++) {
-            writers[i] = new BufferedWriter(new OutputStreamWriter(subs[i].getOutputStream()));
+            // writers[i] = new BufferedWriter(new OutputStreamWriter(subs[i].getOutputStream()));
+            writers[i] = subs[i].getOutputStream();
         }
 
         File testfile = new File("./tests/inputs/" + test_num + ".txt");
@@ -94,13 +98,14 @@ public class Verifier {
 
         Map<String, Set<Integer>> map = new HashMap<String, Set<Integer>>();
         while (reader.hasNextLine()) {
+            Thread.sleep(100);
             String line = reader.nextLine();
             String[] splitStrings = line.split(" ");
             if (splitStrings.length != 3)
                 return;
             if (splitStrings[0].compareTo("S") == 0 || splitStrings[0].compareTo("U") == 0) {
                 String sub_num = splitStrings[2];
-                writers[Integer.parseInt(sub_num)].write(splitStrings[0] + " " + splitStrings[1]+"\r\n");
+                writers[Integer.parseInt(sub_num)].write((splitStrings[0] + " " + splitStrings[1]+"\n").getBytes());
                 writers[Integer.parseInt(sub_num)].flush();
                 if (splitStrings[0].compareTo("S") == 0) {
                     String key = splitStrings[1];
@@ -118,7 +123,7 @@ public class Verifier {
                     }
                 }
             } else if (splitStrings[0].compareTo("T") == 0) {
-                publisherwriter.write(splitStrings[1] + " " + splitStrings[2]+"\r\n");
+                publisherwriter.write((splitStrings[1] + " " + splitStrings[2]+"\n").getBytes());
                 publisherwriter.flush();
                 String key = splitStrings[1];
                 Set<Integer> set = map.get(key);
@@ -131,7 +136,7 @@ public class Verifier {
                 System.err.println("ERROR: Invalid Command line: " + line);
             }
         }
-        
+        Thread.sleep(5000);
         reader.close();
         for (int i = 0; i < num_subs; i++) {
             subs[i].destroy();

@@ -27,6 +27,7 @@ public class Subscriber implements SubscriberInterface {
         try {
             ServerInterface server = (ServerInterface) registry.lookup("master");
             server.unregisterSubscriber(topic, UUID, ReqID);
+            System.out.println("UnSubscribe @"+topic);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -38,6 +39,7 @@ public class Subscriber implements SubscriberInterface {
         try {
             ServerInterface server = (ServerInterface) registry.lookup("master");
             server.registerSubscriber(topic, UUID, ReqID);
+            System.out.println("Subscribe @"+topic);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -54,6 +56,7 @@ public class Subscriber implements SubscriberInterface {
         try {
             BufferedWriter writer = new BufferedWriter(new FileWriter("./logs/"+logFile+".txt",true));
             writer.write(log + "\n");
+            writer.flush();
             writer.close();
         } catch (IOException e) {
             System.out.println("An error occurred.");
