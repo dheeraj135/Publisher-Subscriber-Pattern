@@ -7,4 +7,5 @@ public interface SubscriberInterface extends Remote {
     public void takeInputFromCommandLine() throws RemoteException;
     public String getUUID() throws RemoteException;
     public void register() throws RemoteException;
+	public void updateLogFileName(String string) throws RemoteException;
 }

@@ -5,15 +5,19 @@ import java.util.Scanner;
 import java.util.concurrent.locks.ReentrantLock;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Subscriber implements SubscriberInterface {
     String UUID = "";
-    String logFile = "";
+    String logFile = "log_sub";
     Integer reqCounter = 0;
     ReentrantLock counterLock = new ReentrantLock(true);
     Registry registry;
@@ -43,18 +47,30 @@ public class Subscriber implements SubscriberInterface {
     public void receiveData(String topic, Data dt, String ReqID) {
         // receive data from server. This is called by server
         System.out.println("Received @"+topic+" Data: "+dt.getData()+" with reqID: "+ReqID);
-        outputToLog(ReqID + "," + topic + "," + dt.getData());
+        outputToLog(dt.getData());
     }
 
-    private void outputToLog(String log) {
-        // try {
-        //     FileWriter myWriter = new FileWriter(logFile);
-        //     myWriter.write(log);
-        //     myWriter.close();
-        // } catch (IOException e) {
-        //     System.out.println("An error occurred.");
-        //     e.printStackTrace();
-        // }
+    private void outputToLog(String log){
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter("./logs/"+logFile+".txt",true));
+            writer.write(log + "\n");
+            writer.close();
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+    }
+
+    public void updateLogFileName(String name){
+        logFile = name;
+        Path path = Paths.get("./logs/"+logFile+".txt"); 
+        try { 
+            Files.deleteIfExists(path); 
+        } 
+        catch (IOException e) { 
+            e.printStackTrace(); 
+        } 
+        File logfile = new File("./logs/"+logFile+".txt");
     }
 
     private void executeCommand(String line) {
@@ -76,7 +92,6 @@ public class Subscriber implements SubscriberInterface {
     }
 
     public void executeCommandsFromFile(String filename) {
-        logFile = "serverlog"+filename;
         File testfile = new File(filename);
         Scanner reader;
         try {
@@ -136,9 +151,11 @@ public class Subscriber implements SubscriberInterface {
         robj.register();
         if (args.length == 1){
             robj.executeCommandsFromFile(args[0]);
+        } else if (args.length == 2) {
+            robj.updateLogFileName(args[1]);
+            robj.takeInputFromCommandLine();
         } else {
             robj.takeInputFromCommandLine();
         }
-        
     }
 }

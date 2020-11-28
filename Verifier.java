@@ -5,12 +5,16 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.Random;
 import java.util.Scanner;
 
 
 public class Verifier {
-
+    
     static String getAlphaNumericString(int n) {
         String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + "abcdefghijklmnopqrstuvxyz";
         StringBuilder sb = new StringBuilder(n);
@@ -42,9 +46,21 @@ public class Verifier {
         String[] args = new String[] { "java", "Server" };
         ProcessBuilder pb = new ProcessBuilder(args);
         server = pb.start();
+
+        Thread.sleep(1000);
+
+        String[] args2 = new String[] { "java", "Publisher" };
+        ProcessBuilder pb2 = new ProcessBuilder(args2);
+        publisher = pb2.start();
+        OutputStream stdin = publisher.getOutputStream();
+        BufferedWriter publisherwriter = new BufferedWriter(new OutputStreamWriter(stdin));
+
+        Thread.sleep(1000);
+
         Process[] subs = new Process[num_subs];
         for (int i = 0; i < num_subs; i++) {
-            String[] args1 = new String[] { "java", "Subscriber" };
+            String filename = Integer.toString(test_num)+"_"+Integer.toString(i);
+            String[] args1 = new String[] { "java", "Subscriber", "test_mode", filename};
             ProcessBuilder pb1 = new ProcessBuilder(args1);
             try {
                 subs[i] = pb1.start();
@@ -52,20 +68,15 @@ public class Verifier {
                 System.out.println(e);
             }
         }
-        String[] args2 = new String[] { "java", "Publisher" };
-        ProcessBuilder pb2 = new ProcessBuilder(args2);
-        publisher = pb2.start();
-        OutputStream stdin = publisher.getOutputStream();
-        BufferedWriter publisherwriter = new BufferedWriter(new OutputStreamWriter(stdin));
+        
+        Thread.sleep(1000);
 
-        Thread.sleep(5000);
         BufferedWriter[] writers = new BufferedWriter[num_subs];
         for (int i = 0; i < num_subs; i++) {
-            OutputStream stdin1 = subs[i].getOutputStream();
-            writers[i] = new BufferedWriter(new OutputStreamWriter(stdin1));
+            writers[i] = new BufferedWriter(new OutputStreamWriter(subs[i].getOutputStream()));
         }
 
-        File testfile = new File("./tests/" + test_num + ".txt");
+        File testfile = new File("./tests/inputs/" + test_num + ".txt");
         Scanner reader;
         try {
             reader = new Scanner(testfile);
@@ -73,6 +84,15 @@ public class Verifier {
             e.printStackTrace();
             return;
         }
+
+        File[] testsubfile = new File[num_subs];
+        FileWriter[] testsubfilewriter = new FileWriter[num_subs];
+        for (int i = 0; i < num_subs; i++) {
+            testsubfile[i] = new File("./tests/expected_output/" + test_num + "_" + i + ".txt");
+            testsubfilewriter[i] = new FileWriter(testsubfile[i].getAbsoluteFile());
+        }
+
+        Map<String, Set<Integer>> map = new HashMap<String, Set<Integer>>();
         while (reader.hasNextLine()) {
             String line = reader.nextLine();
             String[] splitStrings = line.split(" ");
@@ -80,19 +100,46 @@ public class Verifier {
                 return;
             if (splitStrings[0].compareTo("S") == 0 || splitStrings[0].compareTo("U") == 0) {
                 String sub_num = splitStrings[2];
-                writers[Integer.parseInt(sub_num)].write(splitStrings[0] + " " + splitStrings[1]);
+                writers[Integer.parseInt(sub_num)].write(splitStrings[0] + " " + splitStrings[1]+"\r\n");
+                writers[Integer.parseInt(sub_num)].flush();
+                if (splitStrings[0].compareTo("S") == 0) {
+                    String key = splitStrings[1];
+                    Set<Integer> set = map.get(key);
+                    if (set == null){ 
+                        set = new HashSet<Integer>();
+                        map.put(key, set);
+                    }
+                    set.add(Integer.parseInt(splitStrings[2]));
+                } else if (splitStrings[0].compareTo("U") == 0) {
+                    String key = splitStrings[1];
+                    Set<Integer> set = map.get(key);
+                    if (set != null){
+                        set.remove(Integer.parseInt(splitStrings[2]));
+                    }
+                }
             } else if (splitStrings[0].compareTo("T") == 0) {
-                publisherwriter.write(splitStrings[1] + " " + splitStrings[2]);
+                publisherwriter.write(splitStrings[1] + " " + splitStrings[2]+"\r\n");
+                publisherwriter.flush();
+                String key = splitStrings[1];
+                Set<Integer> set = map.get(key);
+                if (set != null){
+                    for (int sub: set) {
+                        testsubfilewriter[sub].write(splitStrings[2] + "\n");
+                    }
+                }
             } else {
                 System.err.println("ERROR: Invalid Command line: " + line);
             }
         }
+        
         reader.close();
         for (int i = 0; i < num_subs; i++) {
             subs[i].destroy();
+            testsubfilewriter[i].close();
         }
+        //Runtime.getRuntime().exec("kill -SIGNINT " + server.pid());
         publisher.destroy();
-        server.destroy();
+        server.destroyForcibly();
     }
 
     public static void main(String[] args) throws InterruptedException, IOException {
@@ -110,7 +157,7 @@ public class Verifier {
 
         for (int i = 0; i < num_tests; i++) {
             try {
-                File file = new File("./tests/" + i + ".txt");
+                File file = new File("./tests/inputs/" + i + ".txt");
                 FileWriter myWriter = new FileWriter(file.getAbsoluteFile());
                 populateFile(myWriter, num_topics, num_subs);
                 myWriter.close();
@@ -130,5 +177,7 @@ public class Verifier {
             }
             System.out.println("Completed Test " + i + "\n");
         // }
+
+        //After this write code to diff between logs and expected_output/
     }
 }
