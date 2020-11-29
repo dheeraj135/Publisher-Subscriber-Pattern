@@ -132,8 +132,9 @@ public class Subscriber implements SubscriberInterface {
         Scanner scanner = new Scanner(System.in);
         while (true) {
             String cmd = scanner.nextLine();
-            if (cmd == "exit") {
+            if (cmd.compareTo("exit")==0) {
                 scanner.close();
+                return;
             }
             executeCommand(cmd);
         }

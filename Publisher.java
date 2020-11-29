@@ -36,10 +36,10 @@ public class Publisher {
     private static void publish(String topic, Data dt, String ReqID)
             throws AccessException, RemoteException, NotBoundException {
 
-        System.out.println(topic+ dt.getData()+ReqID);
+        System.out.println("Publishing @"+topic+" Data: "+ dt.getData()+" with Request ID: "+ ReqID);
         registry = LocateRegistry.getRegistry();
         ServerInterface server = (ServerInterface) registry.lookup("master");
-        System.out.println(server);
+        // System.out.println(server);
         server.sendToSubscribers(topic, dt, ReqID);
     }
 
@@ -53,7 +53,10 @@ public class Publisher {
     static void executeCommand(String line) {
         String[] splitStrings = line.split(" ");
         if(splitStrings.length != 2)
+        {
+            System.out.println("Invalid Command: "+line);
             return;
+        }
         Data dt = new Data();
         dt.setStringData(splitStrings[1]);
         String reqId = UUID;
@@ -101,8 +104,9 @@ public class Publisher {
         Scanner scanner = new Scanner(System.in);
         while (true) {
             String cmd = scanner.nextLine();
-            if (cmd == "exit") {
+            if (cmd.compareTo("exit")==0) {
                 scanner.close();
+                return;
             }
             executeCommand(cmd);
         }
