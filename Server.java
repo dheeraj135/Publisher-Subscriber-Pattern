@@ -19,7 +19,23 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
+/*
+ *  Server Class - This class is the manager server b/w the publishers and subscribers.
+ * 
+ *  This class have 2 modes of working,
+ *  a. As Master - When the class is working as master, it receives requests and data from publishers and subscribers.
+ *                  Master also propogates requests to the registered slave. This makes sure both the master and slave have
+ *                  same topicSubscriberList HashMap.
+ *  b. As Slave - When the class is working as slave, it receives requests from the master. When slave starts up, it does a bulk-
+ *                  transfer to sync the topicSubscriberList, after that requests are received incrementally.
+ *              
+ */
+
 public class Server implements ServerInterface{
+    /*
+     * topicSubscriberList - Maintain RMI ids of subscribers registered to topics.
+     * reentrantReadWriteLock - Used to lock the topicSubscriberList.
+     */
     HashMap<String, Set<String> > topicSubscriberList;
     ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
 
@@ -27,6 +43,12 @@ public class Server implements ServerInterface{
         topicSubscriberList = new HashMap<>();
     }
 
+    /*
+     *  amIUp()     -   This skeleton function is called by the Slave to make sure that master is working or not.
+     * 
+     *  isMasterUp()-   Get stub for master server and try calling the amIUp(). If the function executes then
+     *                  the master server is up.
+     */
     public boolean amIUp() {
         return true;
     }
@@ -49,6 +71,13 @@ public class Server implements ServerInterface{
         }
         return false;
     }
+
+    /*
+     *  becomeMaster()  -   This function binds the current object to "master" key in the RMI registry.
+     * 
+     *  becomeSlave()   -   This function first sync the topicSubscriberList with master and then binds current object 
+     *                      to the "slave" key in the RMI registry.
+     */
     public int becomeMaster() {
 
         try { 
@@ -85,6 +114,10 @@ public class Server implements ServerInterface{
             e.printStackTrace(); 
         }
     }
+
+    /*
+     *  startNewSlave() -   Boots up a new Server jvm and redirects the input, output and error streams to the original terminal.
+     */
     private void startNewSlave() {
         String[] args = new String[] { "java", "Server"};
         ProcessBuilder pb = new ProcessBuilder(args);
@@ -97,6 +130,11 @@ public class Server implements ServerInterface{
             System.out.println(e);
         }
     }
+
+    /*
+     *  (un)subscribeToSlave(topic, UUID, ReqID) - Sends the (un)subscribe request to the slave.
+     */
+
     private void subscribeToSlave(String topic, String UUID, String ReqID) {
         // Get slave instance from RMI
         try {  
@@ -125,16 +163,24 @@ public class Server implements ServerInterface{
             e.printStackTrace(); 
         }
     }
-    public void lockMaster() {
-        reentrantReadWriteLock.writeLock().lock();
-    }
+    /*
+     *  syncWithSlave() - Returns the topicSubscriberList of master.
+     */
     public HashMap<String,Set<String> > syncWithSlave() {
         return topicSubscriberList;
     }
+
+    public void lockMaster() {
+        reentrantReadWriteLock.writeLock().lock();
+    }
+    
     public void unlockMaster() {
         reentrantReadWriteLock.writeLock().unlock();
     }
     
+    /*
+     *  sendToSubscribers(topic, dt, ReqID) - This function is called by the publisher to send the data to the subscribers.
+     */
     public void sendToSubscribers(String topic, Data dt, String ReqID) {
         // Acquire lock on topicSubsriberList
         reentrantReadWriteLock.readLock().lock();
@@ -146,8 +192,11 @@ public class Server implements ServerInterface{
         } catch(IOException e){
             e.printStackTrace();
         }
+
         if(topicSubscribers == null)
             return;
+
+        // Iterate over all the subscribers of this topic and send the data.
         for (String sub: topicSubscribers) {
             try {  
                 Registry registry = LocateRegistry.getRegistry(); 
@@ -160,6 +209,9 @@ public class Server implements ServerInterface{
         }
     }
 
+    /*
+     *  outputToLog(str)   -   This function appends str to the log file of the server.
+     */
     public void outputToLog(String str) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter("./logs/server.txt",true));
         writer.write(str+ "\n");
@@ -167,6 +219,9 @@ public class Server implements ServerInterface{
         writer.close();
     }
 
+    /*
+     *  createLogFile() -   Deletes old log file and creates a blank file.
+     */
     public void createLogFile(){
         Path path = Paths.get("./logs/server.txt"); 
         try { 
@@ -177,7 +232,12 @@ public class Server implements ServerInterface{
         } 
         File newFile = new File("./logs/server.txt");
     }
-         
+    
+    /*
+     *  __(un)registerSubscriber(topic, UUID, ReqID)    -   Directly changes the topicSubscriberList based on the request.
+     *
+     *  (un)registerSubscriber(topic, UUID, ReqID)  -   Do the changes locally and propogate the changes to the slave.
+     */
     public void __registerSubscriber(String topic, String UUID, String ReqID) {
         // Update the hashmap
         if (!topicSubscriberList.containsKey(topic)) {
@@ -232,6 +292,10 @@ public class Server implements ServerInterface{
             unsubscribeToSlave(topic, UUID, ReqID);
         }
     }
+
+    /*
+     *  printTopicList()    -   Simply print the current topicSubscriber List.
+     */
     public void printTopicList() {
         for (String ls: topicSubscriberList.keySet()) {
             System.out.println(ls+" "+topicSubscriberList.get(ls));
@@ -242,21 +306,24 @@ public class Server implements ServerInterface{
         Server sobj = new Server();
         ServerInterface rmobj = (ServerInterface) UnicastRemoteObject.exportObject(sobj, 0);
         sobj.createLogFile();
-        rmobj.becomeSlave();
+        rmobj.becomeSlave();    //  Start the server as a slave.
+
         System.out.println("Slave Server: ");
-        rmobj.printTopicList();
+        rmobj.printTopicList(); //  Prints the initial topicSubsriberList of slave.
         System.out.println("I am Slave Now!");
+
         System.out.println("Waiting for master to go down.");
-        while(rmobj.isMasterUp()) {
-            // System.out.println("Going to sleep!");
+        while(rmobj.isMasterUp()) {     // Poll the master every 0.5 secs.
             Thread.sleep(500);
         }
+    
         System.out.println("Becoming Master");
         if(rmobj.becomeMaster() != 0 ) {
             System.out.println("Unable to become master. I will not start a slave.");
             System.out.println("Dying!");
             return;
         }
+
         System.out.println("I am master now. Starting new slave.");
         sobj.startNewSlave();
         System.out.println("Dying!");
