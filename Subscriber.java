@@ -22,6 +22,9 @@ public class Subscriber implements SubscriberInterface {
     ReentrantLock counterLock = new ReentrantLock(true);
     Registry registry;
 
+    /*
+     *  (un)subscribe(topic, ReqID) -   calls the master server and performs the appropriate function.
+     */
     private void unsubscribe(String topic, String ReqID) {
         // call server.unregisterSubscriber()
         try {
@@ -46,12 +49,18 @@ public class Subscriber implements SubscriberInterface {
         }
     }
 
+    /*
+     *  receiveDta(topic, dt, ReqID)    -   This function is called by server to send data to the subscriber object.
+     */
     public void receiveData(String topic, Data dt, String ReqID) {
         // receive data from server. This is called by server
         System.out.println("Received @"+topic+" Data: "+dt.getData()+" with reqID: "+ReqID);
         outputToLog(dt.getData());
     }
 
+    /*
+     *  outputToLog(log)    -   Append log to the logfile.
+     */
     private void outputToLog(String log){
         try {
             BufferedWriter writer = new BufferedWriter(new FileWriter("./logs/"+logFile+".txt",true));
@@ -76,6 +85,9 @@ public class Subscriber implements SubscriberInterface {
         File logfile = new File("./logs/"+logFile+".txt");
     }
 
+    /*
+     *  executeCommand(String line) -   Extract and execute the command from line.
+     */
     private void executeCommand(String line) {
         String[] splitStrings = line.split(" ");
         if(splitStrings.length != 2)
@@ -94,6 +106,9 @@ public class Subscriber implements SubscriberInterface {
         }
     }
 
+    /*
+     *  executeCommandsFromFile(filename)   -   Read the filename file and execute commands from this file line by line.
+     */
     public void executeCommandsFromFile(String filename) {
         File testfile = new File(filename);
         Scanner reader;
@@ -110,6 +125,9 @@ public class Subscriber implements SubscriberInterface {
         reader.close();
     }
 
+    /*
+     *  takeInputFromCommandLine()      -   Take input from terminal and execute commands line by line.
+     */
     public void takeInputFromCommandLine() {
         Scanner scanner = new Scanner(System.in);
         while (true) {
@@ -121,6 +139,9 @@ public class Subscriber implements SubscriberInterface {
         }
     }
 
+    /*
+     *  UUID is the unique identifier of JVM, usually it is of the form pid@hostname.
+     */
     public Subscriber(String name) {
         if (name == null){
             UUID = ManagementFactory.getRuntimeMXBean().getName();

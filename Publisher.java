@@ -20,8 +20,18 @@ public class Publisher {
     static String UUID = "";
     static String logFile = "";
     static Registry registry;
+
+    /*
+     *  reqCounter  -   Request Counter, to generate unique request Ids.
+     *  counterLock -   To lock the reqCounter.
+     */
+
     static Integer reqCounter = 0;
     static ReentrantLock counterLock = new ReentrantLock(true);
+
+    /*
+     *  publish(topic, dt, ReqID) - Publish dt to the subscribers of topic.
+     */
 
     private static void publish(String topic, Data dt, String ReqID)
             throws AccessException, RemoteException, NotBoundException {
@@ -32,9 +42,14 @@ public class Publisher {
         System.out.println(server);
         server.sendToSubscribers(topic, dt, ReqID);
     }
-    private static void outputToLog(String log) {
 
-    }
+    // private static void outputToLog(String log) {
+
+    // }
+
+    /*
+     *  executeCommand(String line) -   Extract and execute the command from line.
+     */
     static void executeCommand(String line) {
         String[] splitStrings = line.split(" ");
         if(splitStrings.length != 2)
@@ -60,6 +75,9 @@ public class Publisher {
         }
     }
 
+    /*
+     *  executeCommandsFromFile(filename)   -   Read the filename file and execute commands from this file line by line.
+     */
     static void executeCommandsFromFile(String filename) {
         File testfile = new File(filename);
         Scanner reader;
@@ -76,6 +94,9 @@ public class Publisher {
         reader.close();
     }
 
+    /*
+     *  takeInputFromCommandLine()      -   Take input from terminal and execute commands line by line.
+     */
     static void takeInputFromCommandLine() {
         Scanner scanner = new Scanner(System.in);
         while (true) {
@@ -87,9 +108,17 @@ public class Publisher {
         }
     }
 
+
     public static String getUUID() {
         return UUID;
     }
+
+    /*
+     *  main() - 
+     *  
+     *  UUID is the unique identifier of JVM, usually it is of the form pid@hostname.
+     */
+
     public static void main(String[] args) {
         UUID = ManagementFactory.getRuntimeMXBean().getName();
         try {
